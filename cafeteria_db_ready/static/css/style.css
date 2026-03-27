@@ -593,3 +593,16 @@ body{
     align-items:flex-start;
   }
 }
+.nav-link-custom {
+  text-decoration: none;
+  color: #1f2937;
+  font-weight: 600;
+  font-size: 14px;
+  padding: 6px 10px;
+  transition: 0.2s;
+}
+
+.nav-link-custom:hover {
+  color: #000;
+  opacity: 0.7;
+}
