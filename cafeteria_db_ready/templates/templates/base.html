@@ -1,0 +1,51 @@
+<!doctype html>
+<html lang="ar" dir="rtl">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>{{ title or 'Arab Cafe' }}</title>
+  <link rel="stylesheet" href="{{ url_for('static', filename='css/bootstrap.rtl.min.css') }}">
+  <link href="https://fonts.googleapis.com/css2?family=Cairo:wght@400;600;700;800;900&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
+</head>
+<body>
+  <nav class="navbar navbar-expand-lg premium-nav sticky-top">
+    <div class="container nav-shell">
+      <a class="navbar-brand d-flex align-items-center gap-3 m-0" href="{{ url_for('index') }}">
+        <img src="{{ url_for('media_logo') }}" class="brand-logo" alt="Arab Cafe Logo">
+        <div>
+          <div class="fw-black brand-title">ARAB CAFE</div>
+        </div>
+      </a>
+      <div class="nav-actions d-flex flex-wrap gap-2">
+        <a class="btn btn-nav btn-nav-primary btn-sm rounded-pill px-3" href="{{ url_for('index') }}">موقع الطلاب</a>
+        {% if session.get('admin_id') %}
+          <a class="btn btn-nav btn-sm rounded-pill px-3" href="{{ url_for('admin_dashboard') }}">لوحة الكافتيريا</a>
+          <a class="btn btn-dark btn-sm rounded-pill px-3" href="{{ url_for('admin_logout') }}">تسجيل خروج</a>
+        {% else %}
+          <a class="btn btn-nav btn-sm rounded-pill px-3" href="{{ url_for('admin_login') }}">دخول الكافتيريا</a>
+        {% endif %}
+      </div>
+    </div>
+  </nav>
+
+  <main class="pb-5">
+    <div class="container pt-3">
+      {% with messages = get_flashed_messages(with_categories=true) %}
+        {% if messages %}
+          {% for category, message in messages %}
+            <div class="alert alert-{{ category }} alert-dismissible fade show rounded-4 shadow-sm" role="alert">
+              {{ message }}
+              <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+            </div>
+          {% endfor %}
+        {% endif %}
+      {% endwith %}
+    </div>
+    {% block content %}{% endblock %}
+  </main>
+
+  <script src="{{ url_for('static', filename='js/bootstrap.bundle.min.js') }}"></script>
+  {% block scripts %}{% endblock %}
+</body>
+</html>

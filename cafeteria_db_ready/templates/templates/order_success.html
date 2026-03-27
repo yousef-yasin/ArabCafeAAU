@@ -1,0 +1,17 @@
+{% extends 'base.html' %}
+{% block content %}
+<div class="container py-4">
+  <div class="success-card text-center mx-auto">
+    <div class="success-icon">✓</div>
+    <h2>تم إرسال طلبك بنجاح</h2>
+    <p class="lead text-muted">رقم طلبك هو <strong>#{{ order.id }}</strong></p>
+    <p>أول ما الكافتيريا تأكد الطلب، بصير يتجهز مباشرة.</p>
+    <div class="success-summary">
+      <div><span>الاسم</span><strong>{{ order.student_name }}</strong></div>
+      <div><span>التلفون</span><strong>{{ order.phone }}</strong></div>
+      <div><span>المجموع</span><strong>{{ '%.2f'|format(order.total) }} د.أ</strong></div>
+    </div>
+    <a href="{{ url_for('index') }}" class="btn btn-dark rounded-pill px-4">اعمل طلب جديد</a>
+  </div>
+</div>
+{% endblock %}

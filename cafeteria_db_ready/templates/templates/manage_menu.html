@@ -1,0 +1,141 @@
+{% extends 'base.html' %}
+{% block content %}
+<div class="container py-3">
+  <div class="dashboard-hero mb-4">
+    <div>
+      <h1 class="mb-2">إدارة المنيو</h1>
+      <p class="mb-0 text-white-50">كل اسم وسعر وصورة مخزنين داخل الداتا بيس، وصاحب الكافتيريا يقدر يعدلهم بأي وقت.</p>
+    </div>
+    <div class="d-flex gap-2 flex-wrap">
+      <a href="{{ url_for('admin_dashboard') }}" class="btn btn-light rounded-pill px-4">رجوع للطلبات</a>
+      <a href="{{ url_for('reports') }}" class="btn btn-warning rounded-pill px-4">التقارير</a>
+    </div>
+  </div>
+
+  <div class="row g-4 align-items-start">
+    <div class="col-xl-4">
+      <div class="admin-panel mb-4">
+        <h4>إضافة قسم جديد</h4>
+        <form method="POST">
+          <input type="hidden" name="action" value="add-category">
+          <div class="mb-2"><input class="form-control rounded-4" name="category_name" placeholder="اسم القسم" required></div>
+          <div class="mb-2"><input class="form-control rounded-4" name="category_slug" placeholder="slug-example" required></div>
+          <div class="mb-3">
+            <label class="form-label">يعرض صور؟</label>
+            <select class="form-select rounded-4" name="show_image">
+              <option value="1">نعم</option>
+              <option value="0">لا</option>
+            </select>
+          </div>
+          <button class="btn btn-dark w-100 rounded-pill">إضافة القسم</button>
+        </form>
+      </div>
+
+      <div class="admin-panel">
+        <h4>إضافة صنف جديد</h4>
+        <form method="POST" enctype="multipart/form-data">
+          <input type="hidden" name="action" value="add-item">
+          <div class="mb-2"><input class="form-control rounded-4" name="name" placeholder="اسم الصنف" required></div>
+          <div class="mb-2"><textarea class="form-control rounded-4" name="description" placeholder="وصف قصير"></textarea></div>
+          <div class="mb-2"><input type="number" step="0.01" class="form-control rounded-4" name="price" placeholder="السعر" required></div>
+          <div class="mb-2"><input type="file" class="form-control rounded-4" name="image_file" accept="image/*"></div>
+          <div class="mb-2">
+            <select class="form-select rounded-4" name="category_id" required>
+              {% for category in categories %}
+              <option value="{{ category.id }}">{{ category.name }}</option>
+              {% endfor %}
+            </select>
+          </div>
+          <div class="mb-3">
+            <label class="form-label">يظهر بالمميز؟</label>
+            <select class="form-select rounded-4" name="featured">
+              <option value="0">لا</option>
+              <option value="1">نعم</option>
+            </select>
+          </div>
+          <button class="btn btn-warning w-100 fw-bold rounded-pill">إضافة الصنف</button>
+        </form>
+      </div>
+    </div>
+
+    <div class="col-xl-8">
+      <div class="row g-3">
+        {% for item in items %}
+        <div class="col-12">
+          <div class="item-card h-100 {% if not item.category.show_image %}no-image-card{% endif %}">
+            <div class="row g-0 align-items-stretch">
+              {% if item.category.show_image and item.image_data %}
+              <div class="col-lg-4">
+                <img class="item-image h-100" src="{{ url_for('menu_item_image', item_id=item.id) }}" alt="{{ item.name }}">
+              </div>
+              {% endif %}
+              <div class="col">
+                <div class="p-3">
+                  <div class="d-flex justify-content-between align-items-start gap-2 mb-2 flex-wrap">
+                    <div>
+                      <div class="small text-muted">{{ item.category.name }}</div>
+                      <h5 class="mb-1">{{ item.name }}</h5>
+                    </div>
+                    <span class="price-tag">{{ '%.2f'|format(item.price) }} د.أ</span>
+                  </div>
+                  <p class="text-muted small mb-2">{{ item.description or 'بدون وصف' }}</p>
+                  <div class="d-flex flex-wrap gap-2 align-items-center mb-3">
+                    <span class="status-pill {{ 'status-ready' if item.available else 'status-cancelled' }}">{{ 'متاح' if item.available else 'مخفي' }}</span>
+                    {% if item.featured %}<span class="badge text-bg-warning rounded-pill">مميز</span>{% endif %}
+                    {% if item.image_data %}<span class="badge text-bg-dark rounded-pill">الصورة داخل DB</span>{% endif %}
+                  </div>
+
+                  <form method="POST" action="{{ url_for('edit_menu_item', item_id=item.id) }}" enctype="multipart/form-data">
+                    <div class="row g-2">
+                      <div class="col-md-6"><input class="form-control rounded-4" name="name" value="{{ item.name }}" required></div>
+                      <div class="col-md-3"><input type="number" step="0.01" class="form-control rounded-4" name="price" value="{{ item.price }}" required></div>
+                      <div class="col-md-3">
+                        <select class="form-select rounded-4" name="category_id" required>
+                          {% for category in categories %}
+                          <option value="{{ category.id }}" {% if category.id == item.category_id %}selected{% endif %}>{{ category.name }}</option>
+                          {% endfor %}
+                        </select>
+                      </div>
+                      <div class="col-12"><textarea class="form-control rounded-4" name="description" rows="2">{{ item.description or '' }}</textarea></div>
+                      <div class="col-md-4"><input type="file" class="form-control rounded-4" name="image_file" accept="image/*"></div>
+                      <div class="col-md-2">
+                        <select class="form-select rounded-4" name="featured">
+                          <option value="1" {% if item.featured %}selected{% endif %}>مميز</option>
+                          <option value="0" {% if not item.featured %}selected{% endif %}>عادي</option>
+                        </select>
+                      </div>
+                      <div class="col-md-2">
+                        <select class="form-select rounded-4" name="available">
+                          <option value="1" {% if item.available %}selected{% endif %}>متاح</option>
+                          <option value="0" {% if not item.available %}selected{% endif %}>مخفي</option>
+                        </select>
+                      </div>
+                      <div class="col-md-2 d-flex align-items-center">
+                        <div class="form-check">
+                          <input class="form-check-input" type="checkbox" value="1" name="remove_image" id="remove{{ item.id }}">
+                          <label class="form-check-label small" for="remove{{ item.id }}">حذف الصورة</label>
+                        </div>
+                      </div>
+                      <div class="col-md-2 d-grid"><button class="btn btn-dark rounded-pill">حفظ التعديل</button></div>
+                    </div>
+                  </form>
+
+                  <div class="d-flex gap-2 mt-3 flex-wrap">
+                    <form method="POST" action="{{ url_for('toggle_menu_item', item_id=item.id) }}">
+                      <button class="btn btn-outline-dark rounded-pill">تبديل الحالة</button>
+                    </form>
+                    <form method="POST" action="{{ url_for('delete_menu_item', item_id=item.id) }}" onsubmit="return confirm('تأكيد حذف الصنف؟')">
+                      <button class="btn btn-outline-danger rounded-pill">حذف</button>
+                    </form>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+        {% endfor %}
+      </div>
+    </div>
+  </div>
+</div>
+{% endblock %}
