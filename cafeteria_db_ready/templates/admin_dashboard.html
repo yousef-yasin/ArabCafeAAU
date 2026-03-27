@@ -5,7 +5,7 @@
   <div class="dashboard-hero mb-4">
     <div>
       <h1 class="mb-2">لوحة الكافتيريا</h1>
-      <p class="mb-0 text-white-50">إدارة الطلبات، تأكيد الطلب، طباعة الفاتورة، ومراقبة شغل اليوم.</p>
+      <p class="mb-0 text-white-50">عرض الطلبات، طباعة الفاتورة، أو إلغاء الطلب فقط.</p>
     </div>
     <div class="d-flex flex-wrap gap-2">
       <a href="{{ url_for('manage_menu') }}" class="btn btn-light rounded-pill px-4">إدارة المنيو</a>
@@ -22,13 +22,11 @@
     <div class="col-lg col-md-4 col-6"><div class="stat-card"><span>مبيعات اليوم</span><strong>{{ '%.2f'|format(stats.sales_today) }} د.أ</strong></div></div>
   </div>
 
-  <div class="filter-bar mb-4">
-    <a href="{{ url_for('admin_dashboard') }}" class="filter-pill {% if not active_status %}active{% endif %}">الكل</a>
-    <a href="{{ url_for('admin_dashboard', status='pending') }}" class="filter-pill {% if active_status == 'pending' %}active{% endif %}">قيد الانتظار</a>
-    <a href="{{ url_for('admin_dashboard', status='confirmed') }}" class="filter-pill {% if active_status == 'confirmed' %}active{% endif %}">مؤكدة</a>
-    <a href="{{ url_for('admin_dashboard', status='ready') }}" class="filter-pill {% if active_status == 'ready' %}active{% endif %}">جاهزة</a>
-    <a href="{{ url_for('admin_dashboard', status='cancelled') }}" class="filter-pill {% if active_status == 'cancelled' %}active{% endif %}">ملغية</a>
-  </div>
+ <div class="filter-bar mb-4">
+  <a href="{{ url_for('admin_dashboard') }}" class="filter-pill {% if not active_status %}active{% endif %}">الكل</a>
+  <a href="{{ url_for('admin_dashboard', status='pending') }}" class="filter-pill {% if active_status == 'pending' %}active{% endif %}">قيد الانتظار</a>
+  <a href="{{ url_for('admin_dashboard', status='cancelled') }}" class="filter-pill {% if active_status == 'cancelled' %}active{% endif %}">ملغية</a>
+</div>
 
   <div id="orders-container">
     {% include 'partials/orders_list.html' %}

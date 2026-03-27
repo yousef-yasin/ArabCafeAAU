@@ -30,25 +30,15 @@
       {% endif %}
 
       <div class="d-flex flex-wrap gap-2 mt-3">
-        {% if order.status == 'pending' %}
-        <form method="POST" action="{{ url_for('confirm_order', order_id=order.id) }}">
-          <button class="btn btn-warning rounded-pill px-4">تأكيد + طباعة</button>
-        </form>
-        {% endif %}
+        <a href="{{ url_for('print_receipt', order_id=order.id) }}" class="btn btn-dark rounded-pill px-4">
+          طباعة الفاتورة
+        </a>
 
-        {% if order.status in ['pending', 'confirmed'] %}
-        <form method="POST" action="{{ url_for('ready_order', order_id=order.id) }}">
-          <button class="btn btn-success rounded-pill px-4">تجهيز الطلب</button>
-        </form>
-        {% endif %}
-
-        {% if order.status != 'cancelled' and order.status != 'ready' %}
+        {% if order.status != 'cancelled' %}
         <form method="POST" action="{{ url_for('cancel_order', order_id=order.id) }}">
-          <button class="btn btn-outline-danger rounded-pill px-4">إلغاء</button>
+          <button class="btn btn-outline-danger rounded-pill px-4">إلغاء الطلب</button>
         </form>
         {% endif %}
-
-        <a href="{{ url_for('print_receipt', order_id=order.id) }}" class="btn btn-outline-dark rounded-pill px-4">عرض الفاتورة</a>
       </div>
     </div>
   </div>
