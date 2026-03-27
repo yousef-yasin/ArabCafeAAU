@@ -382,7 +382,7 @@ def place_order():
     return render_template('order_success.html', order=order)
 
 
-@app.route('/admin/login', methods=['GET', 'POST'])
+@app.route('/admin/loginarabcafeaau', methods=['GET', 'POST'])
 def admin_login():
     if request.method == 'POST':
         username = request.form.get('username', '').strip()
