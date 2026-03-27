@@ -1,0 +1,38 @@
+<!doctype html>
+<html lang="ar" dir="rtl">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>فاتورة الطلب #{{ order.id }}</title>
+  <style>
+    body{font-family:Arial,sans-serif;padding:16px;max-width:320px;margin:auto;color:#111}
+    .header{text-align:center}.logo{width:72px;height:72px;object-fit:cover;border-radius:50%;margin:0 auto 8px;display:block}
+    .line{border-top:1px dashed #333;margin:12px 0}.item{display:flex;justify-content:space-between;font-size:14px;margin-bottom:6px;gap:8px}.muted{color:#666;font-size:13px}
+    @media print {.no-print{display:none} body{padding:0}}
+  </style>
+</head>
+<body onload="window.print()">
+  <div class="no-print" style="margin-bottom:16px;text-align:center">
+    <button onclick="window.print()">طباعة</button>
+    <a href="{{ url_for('admin_dashboard') }}">رجوع</a>
+  </div>
+  <div class="header">
+    <img class="logo" src="{{ url_for('media_logo', _external=True) }}" alt="logo">
+    <h2 style="margin:0">ARAB CAFE</h2>
+    <div class="muted">فاتورة الطلب #{{ order.id }}</div>
+    <div class="muted">{{ order.created_at.strftime('%Y-%m-%d %H:%M') }}</div>
+  </div>
+  <div class="line"></div>
+  <p><strong>الطالب:</strong> {{ order.student_name }}</p>
+  <p><strong>التلفون:</strong> {{ order.phone }}</p>
+  {% if order.notes %}<p><strong>ملاحظات:</strong> {{ order.notes }}</p>{% endif %}
+  <div class="line"></div>
+  {% for item in order.items %}
+  <div class="item"><span>{{ item.quantity }} × {{ item.item_name }}</span><span>{{ '%.2f'|format(item.unit_price * item.quantity) }} د.أ</span></div>
+  {% endfor %}
+  <div class="line"></div>
+  <div class="item" style="font-weight:bold"><span>المجموع</span><span>{{ '%.2f'|format(order.total) }} د.أ</span></div>
+  <div class="line"></div>
+  <p style="text-align:center">شكراً وبالهناء والشفاء</p>
+</body>
+</html>

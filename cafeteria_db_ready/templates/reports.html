@@ -1,0 +1,50 @@
+{% extends 'base.html' %}
+{% block content %}
+<div class="container py-3">
+  <div class="dashboard-hero mb-4">
+    <div>
+      <h1 class="mb-2">تقارير الأيام والطلبات</h1>
+      <p class="mb-0 text-white-50">شوف كل يوم كم طلب دخل، شو محتوى الطلبات، وإجمالي كل يوم تحتها.</p>
+    </div>
+    <div class="d-flex gap-2 flex-wrap">
+      <a href="{{ url_for('admin_dashboard') }}" class="btn btn-light rounded-pill px-4">الطلبات</a>
+      <a href="{{ url_for('manage_menu') }}" class="btn btn-warning rounded-pill px-4">المنيو</a>
+    </div>
+  </div>
+
+  <div class="grand-total-box mb-4">الإجمالي الكلي لكل الأيام: <strong>{{ '%.2f'|format(grand_total) }} د.أ</strong></div>
+
+  {% for group in reports_data %}
+  <div class="report-day-card mb-4">
+    <div class="d-flex justify-content-between align-items-center flex-wrap gap-3 mb-3">
+      <div>
+        <h3 class="mb-1">تاريخ {{ group.date }}</h3>
+        <div class="text-muted">{{ group.total_count }} طلب</div>
+      </div>
+      <div class="price-tag">مجموع اليوم: {{ '%.2f'|format(group.total_amount) }} د.أ</div>
+    </div>
+
+    {% for order in group.orders %}
+    <div class="report-order-row">
+      <div class="d-flex justify-content-between flex-wrap gap-2 mb-2">
+        <strong>طلب #{{ order.id }} - {{ order.student_name }}</strong>
+        <span class="text-muted">{{ order.phone }} • {{ order.created_at.strftime('%H:%M') }}</span>
+      </div>
+      {% for item in order.items %}
+      <div class="summary-line small">
+        <span>{{ item.quantity }} × {{ item.item_name }}</span>
+        <strong>{{ '%.2f'|format(item.unit_price * item.quantity) }} د.أ</strong>
+      </div>
+      {% endfor %}
+      <div class="summary-line mt-2 total-line">
+        <span>إجمالي الطلب</span>
+        <strong>{{ '%.2f'|format(order.total) }} د.أ</strong>
+      </div>
+    </div>
+    {% endfor %}
+  </div>
+  {% else %}
+  <div class="empty-box">لا يوجد بيانات طلبات بعد.</div>
+  {% endfor %}
+</div>
+{% endblock %}
