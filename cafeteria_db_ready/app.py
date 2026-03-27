@@ -17,7 +17,7 @@ DB_PATH = os.path.join(BASE_DIR, 'cafeteria.db')
 SEED_DIR = os.path.join(BASE_DIR, 'seed')
 
 app = Flask(__name__)
-app.config['SECRET_KEY'] = 'arab-cafe-secret-key'
+app.config['SECRET_KEY'] = os.getenv('SECRET_KEY', 'dev-secret-change-me')
 app.config['SQLALCHEMY_DATABASE_URI'] = f'sqlite:///{DB_PATH}'
 app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
 app.config['MAX_CONTENT_LENGTH'] = 8 * 1024 * 1024
@@ -219,8 +219,16 @@ def seed_site_asset(key, seed_filename):
 
 def seed_data():
     if not Admin.query.first():
-        db.session.add(Admin(username='admin', password_hash=generate_password_hash('admin123')))
+        admin_username = os.getenv('ADMIN_USERNAME')
+        admin_password = os.getenv('ADMIN_PASSWORD')
 
+        if admin_username and admin_password:
+            db.session.add(
+                Admin(
+                    username=admin_username,
+                    password_hash=generate_password_hash(admin_password)
+                )
+            )
     seed_site_asset('logo', 'logo.png')
     seed_site_asset('menu_board', 'menu-board.png')
 
@@ -614,4 +622,4 @@ with app.app_context():
     seed_data()
 
 if __name__ == "__main__":
-    app.run(host="0.0.0.0", port=10000)
+    app.run(host="0.0.0.0", port=int(os.getenv("PORT", 10000)))
