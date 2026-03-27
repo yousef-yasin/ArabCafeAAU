@@ -404,7 +404,7 @@ def admin_logout():
     return redirect(url_for('admin_login'))
 
 
-@app.route('/admin')
+@app.route('/afdminarabcafeaau123')
 @admin_required
 def admin_dashboard():
     status = request.args.get('status')

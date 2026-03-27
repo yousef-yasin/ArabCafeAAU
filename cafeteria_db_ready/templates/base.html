@@ -17,29 +17,7 @@
           <div class="fw-black brand-title">ARAB CAFE</div>
         </div>
       </a>
-      <div class="nav-actions d-flex flex-wrap gap-2">
-        <div class="nav-actions d-flex gap-3">
-
-  <a href="{{ url_for('index') }}" class="nav-link-custom">
-    موقع الطلاب
-  </a>
-
-  {% if session.get('admin_id') %}
-    <a href="{{ url_for('admin_dashboard') }}" class="nav-link-custom">
-      لوحة الكافتيريا
-    </a>
-
-    <a href="{{ url_for('admin_logout') }}" class="nav-link-custom text-danger">
-      تسجيل خروج
-    </a>
-  {% else %}
-    <a href="{{ url_for('admin_login') }}" class="nav-link-custom">
-      دخول الكافتيريا
-    </a>
-  {% endif %}
-
-</div>
-      </div>
+      
     </div>
   </nav>
 
