@@ -9,6 +9,18 @@
     <div class="menu-header-badge">{{ categories|length }} أقسام</div>
   </div>
 
+  <div class="cart-floating-wrap">
+    <button type="button" class="cart-floating-btn" id="cart-float-btn">
+      <span class="cart-floating-icon">🛒</span>
+      <span>السلة</span>
+      <span class="cart-floating-count" id="cart-count">0</span>
+    </button>
+    <div class="cart-added-toast" id="cart-added-toast">
+      <span class="cart-floating-icon">🛒</span>
+      <span id="cart-toast-text">تمت إضافة المنتج إلى السلة</span>
+    </div>
+  </div>
+
   {% if featured_items %}
   <div class="featured-strip mb-4">
     {% for item in featured_items[:8] %}
@@ -28,7 +40,7 @@
   </div>
 
   <div class="row g-4 align-items-start">
-    <div class="col-xl-8 col-12">
+    <div class="col-12">
       {% for category in categories %}
       <section class="menu-category-panel {% if loop.first %}active{% endif %}" id="category-{{ category.id }}">
         <div class="section-heading mb-3">
@@ -38,7 +50,7 @@
 
         <div class="row g-3">
           {% for item in category.items if item.available %}
-          <div class="col-md-6 col-12">
+          <div class="col-md-6 col-xl-4 col-12">
             <div class="item-card h-100 {% if not category.show_image %}no-image-card{% endif %}">
               {% if category.show_image and item.image_data %}
                 <img src="{{ url_for('menu_item_image', item_id=item.id) }}" alt="{{ item.name }}" class="item-image">
@@ -72,47 +84,51 @@
       </section>
       {% endfor %}
     </div>
-
-    <div class="col-xl-4 col-12">
-      <div class="order-panel">
-        <div class="d-flex justify-content-between align-items-center mb-3">
-          <h3 class="mb-0">سلة الطلب</h3>
-          <span class="cart-badge" id="cart-count">0</span>
-        </div>
-
-        <div id="cart-items" class="cart-items-box mb-3 text-muted">لسا ما أضفت أي منتج.</div>
-
-        <div class="checkout-total mb-3">
-          <span>المجموع</span>
-          <strong id="cart-total">0.00 د.أ</strong>
-        </div>
-
-        <form method="POST" action="{{ url_for('place_order') }}" id="order-form">
-          <input type="hidden" name="cart_payload" id="cart_payload">
-
-          <div class="mb-3">
-            <label class="form-label">اسم الطالب</label>
-            <input name="student_name" class="form-control form-control-lg rounded-4" placeholder="مثال: أحمد خالد" required>
-          </div>
-
-          <div class="mb-3">
-            <label class="form-label">رقم التلفون</label>
-            <input name="phone" class="form-control form-control-lg rounded-4" placeholder="07xxxxxxxx" required>
-          </div>
-
-          <div class="mb-3">
-            <label class="form-label">ملاحظات</label>
-            <textarea name="notes" class="form-control rounded-4" rows="3" placeholder="بدون بصل، زيادة جبنة..."></textarea>
-          </div>
-
-          <button class="btn btn-dark btn-lg w-100 rounded-pill fw-bold" type="submit">
-            تأكيد وإرسال الطلب
-          </button>
-        </form>
-      </div>
-    </div>
   </div>
 </section>
+
+<div class="cart-drawer-backdrop" id="cart-backdrop"></div>
+<aside class="cart-drawer" id="cart-drawer" aria-hidden="true">
+  <div class="order-panel cart-drawer-panel">
+    <div class="d-flex justify-content-between align-items-center mb-3 gap-3">
+      <div>
+        <h3 class="mb-1">سلة الطلب</h3>
+        <div class="text-muted small">راجع طلبك ثم أرسله مباشرة.</div>
+      </div>
+      <button type="button" class="cart-close-btn" id="cart-close-btn">✕</button>
+    </div>
+
+    <div id="cart-items" class="cart-items-box mb-3 text-muted">لسا ما أضفت أي منتج.</div>
+
+    <div class="checkout-total mb-3">
+      <span>المجموع</span>
+      <strong id="cart-total">0.00 د.أ</strong>
+    </div>
+
+    <form method="POST" action="{{ url_for('place_order') }}" id="order-form">
+      <input type="hidden" name="cart_payload" id="cart_payload">
+
+      <div class="mb-3">
+        <label class="form-label">اسم الطالب</label>
+        <input name="student_name" class="form-control form-control-lg rounded-4" placeholder="مثال: أحمد خالد" required>
+      </div>
+
+      <div class="mb-3">
+        <label class="form-label">رقم التلفون</label>
+        <input name="phone" class="form-control form-control-lg rounded-4" placeholder="07xxxxxxxx" required>
+      </div>
+
+      <div class="mb-3">
+        <label class="form-label">ملاحظات</label>
+        <textarea name="notes" class="form-control rounded-4" rows="3" placeholder="بدون بصل، زيادة جبنة..."></textarea>
+      </div>
+
+      <button class="btn btn-dark btn-lg w-100 rounded-pill fw-bold" type="submit">
+        تأكيد وإرسال الطلب
+      </button>
+    </form>
+  </div>
+</aside>
 {% endblock %}
 
 {% block scripts %}

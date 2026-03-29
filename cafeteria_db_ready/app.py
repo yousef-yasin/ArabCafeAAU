@@ -489,6 +489,15 @@ def cancel_order(order_id):
     return redirect(url_for('admin_dashboard'))
 
 
+@app.route('/admin/orders/delete-all', methods=['POST'])
+@admin_required
+def delete_all_orders():
+    deleted = Order.query.delete()
+    db.session.commit()
+    flash(f'تم حذف جميع الطلبات ({deleted}).', 'warning')
+    return redirect(url_for('admin_dashboard'))
+
+
 @app.route('/admin/menu', methods=['GET', 'POST'])
 @admin_required
 def manage_menu():

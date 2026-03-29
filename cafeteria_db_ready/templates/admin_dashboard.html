@@ -10,6 +10,9 @@
     <div class="d-flex flex-wrap gap-2">
       <a href="{{ url_for('manage_menu') }}" class="btn btn-light rounded-pill px-4">إدارة المنيو</a>
       <a href="{{ url_for('reports') }}" class="btn btn-warning rounded-pill px-4">تقارير الأيام</a>
+      <form method="POST" action="{{ url_for('delete_all_orders') }}" onsubmit="return confirm('متأكد أنك تريد حذف جميع الطلبات؟');">
+        <button type="submit" class="btn btn-danger rounded-pill px-4">حذف الطلبات</button>
+      </form>
     </div>
   </div>
 

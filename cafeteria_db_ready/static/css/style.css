@@ -606,3 +606,132 @@ body{
   color: #000;
   opacity: 0.7;
 }
+
+.cart-floating-wrap{
+  position:sticky;
+  top:96px;
+  z-index:35;
+  display:flex;
+  flex-direction:column;
+  align-items:flex-end;
+  gap:10px;
+  margin-bottom:14px;
+}
+
+.cart-floating-btn{
+  border:none;
+  background:#111827;
+  color:#fff;
+  border-radius:999px;
+  padding:12px 18px;
+  display:inline-flex;
+  align-items:center;
+  gap:10px;
+  font-weight:900;
+  box-shadow:0 14px 30px rgba(17,24,39,.22);
+}
+
+.cart-floating-btn:hover{
+  background:#1f2937;
+}
+
+.cart-floating-count{
+  background:#fff;
+  color:#111827;
+  min-width:34px;
+  height:34px;
+  border-radius:50%;
+  display:inline-flex;
+  align-items:center;
+  justify-content:center;
+  font-weight:900;
+}
+
+.cart-floating-icon{
+  font-size:1.1rem;
+  line-height:1;
+}
+
+.cart-added-toast{
+  background:#fff;
+  border:1px solid var(--line);
+  border-radius:999px;
+  padding:10px 16px;
+  box-shadow:0 12px 26px rgba(0,0,0,.08);
+  display:flex;
+  align-items:center;
+  gap:10px;
+  transform:translateY(-10px);
+  opacity:0;
+  pointer-events:none;
+  transition:.25s ease;
+}
+
+.cart-added-toast.show{
+  transform:translateY(0);
+  opacity:1;
+}
+
+.add-to-cart{
+  transition:transform .15s ease, box-shadow .15s ease, background .15s ease;
+}
+
+.add-to-cart:active,
+.add-to-cart.added{
+  transform:scale(.97);
+  box-shadow:0 0 0 4px rgba(255,255,255,.2) inset;
+  background:#374151;
+  border-color:#374151;
+}
+
+.cart-drawer-backdrop{
+  position:fixed;
+  inset:0;
+  background:rgba(17,24,39,.45);
+  opacity:0;
+  pointer-events:none;
+  transition:.25s ease;
+  z-index:1040;
+}
+
+.cart-drawer-backdrop.show{
+  opacity:1;
+  pointer-events:auto;
+}
+
+.cart-drawer{
+  position:fixed;
+  top:0;
+  left:0;
+  height:100vh;
+  width:min(460px, 100%);
+  z-index:1050;
+  transform:translateX(-100%);
+  transition:.3s ease;
+  padding:18px;
+  overflow:auto;
+}
+
+.cart-drawer.open{
+  transform:translateX(0);
+}
+
+.cart-drawer-panel{
+  position:relative;
+  top:0;
+  min-height:calc(100vh - 36px);
+}
+
+.cart-close-btn{
+  width:42px;
+  height:42px;
+  border:none;
+  border-radius:50%;
+  background:#f3f4f6;
+  font-size:1.2rem;
+  font-weight:900;
+}
+
+body.cart-drawer-open{
+  overflow:hidden;
+}
