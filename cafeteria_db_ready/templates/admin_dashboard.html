@@ -47,6 +47,7 @@
 {% block scripts %}
 <script>
   const STORAGE_KEY = "cafeteria_seen_order_ids";
+  const SOUND_ENABLED_KEY = "cafeteria_sound_enabled";
   let audioCtx = null;
   let soundEnabled = false;
 
@@ -73,6 +74,26 @@
     localStorage.setItem(STORAGE_KEY, JSON.stringify(orderIds));
   }
 
+  function syncSoundButton() {
+    const button = document.getElementById("enable-sound-btn");
+    if (!button) return;
+    if (soundEnabled) {
+      button.textContent = "تم تفعيل الصوت";
+      button.classList.remove("btn-dark");
+      button.classList.add("btn-success");
+    } else {
+      button.textContent = "تفعيل صوت الإشعارات";
+      button.classList.remove("btn-success");
+      button.classList.add("btn-dark");
+    }
+  }
+
+  function markSoundEnabled() {
+    soundEnabled = true;
+    localStorage.setItem(SOUND_ENABLED_KEY, "1");
+    syncSoundButton();
+  }
+
   function unlockSound() {
     if (!audioCtx) {
       audioCtx = new (window.AudioContext || window.webkitAudioContext)();
@@ -82,15 +103,7 @@
       audioCtx.resume();
     }
 
-    soundEnabled = true;
-
-    const button = document.getElementById("enable-sound-btn");
-    if (button) {
-      button.textContent = "تم تفعيل الصوت";
-      button.classList.remove("btn-dark");
-      button.classList.add("btn-success");
-      button.disabled = true;
-    }
+    markSoundEnabled();
   }
 
   function playNotificationSound() {
@@ -99,6 +112,10 @@
     try {
       if (!audioCtx) {
         audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+      }
+
+      if (audioCtx.state === "suspended") {
+        audioCtx.resume().catch(() => {});
       }
 
       const oscillator = audioCtx.createOscillator();
@@ -158,11 +175,36 @@
   document.addEventListener("DOMContentLoaded", () => {
     const container = document.getElementById("orders-container");
     const initialOrderIds = getOrderIdsFromHtml(container ? container.innerHTML : "");
-    saveSeenOrders(initialOrderIds);
+
+    if (!loadSeenOrders().length) {
+      saveSeenOrders(initialOrderIds);
+    }
+
+    soundEnabled = localStorage.getItem(SOUND_ENABLED_KEY) === "1";
+    syncSoundButton();
 
     const enableSoundButton = document.getElementById("enable-sound-btn");
     if (enableSoundButton) {
       enableSoundButton.addEventListener("click", unlockSound);
+    }
+
+    if (soundEnabled) {
+      try {
+        audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+        if (audioCtx.state === "suspended") {
+          const reviveSound = () => {
+            unlockSound();
+            window.removeEventListener("click", reviveSound);
+            window.removeEventListener("touchstart", reviveSound);
+            window.removeEventListener("keydown", reviveSound);
+          };
+          window.addEventListener("click", reviveSound, { once: true });
+          window.addEventListener("touchstart", reviveSound, { once: true });
+          window.addEventListener("keydown", reviveSound, { once: true });
+        }
+      } catch (error) {
+        console.error("Audio initialization failed:", error);
+      }
     }
 
     setInterval(refreshOrders, 5000);

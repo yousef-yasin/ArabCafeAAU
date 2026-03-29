@@ -635,6 +635,10 @@ body{
   background:#1f2937;
 }
 
+.cart-floating-btn:active{
+  transform:scale(.98);
+}
+
 .cart-floating-count{
   background:#fff;
   color:#111827;
@@ -734,4 +738,27 @@ body{
 
 body.cart-drawer-open{
   overflow:hidden;
+}
+
+body.student-layout .category-tabs-wrap{
+  top:0;
+}
+
+body.student-layout .cart-floating-wrap{
+  top:16px;
+}
+
+body.student-layout .student-page{
+  padding-top:4px;
+}
+
+body.student-layout .premium-nav{
+  position:relative;
+}
+
+.cart-floating-btn:focus-visible,
+.category-tab-btn:focus-visible,
+.add-to-cart:focus-visible{
+  outline:3px solid rgba(17,24,39,.18);
+  outline-offset:2px;
 }
