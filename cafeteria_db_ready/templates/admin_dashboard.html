@@ -47,7 +47,6 @@
 {% block scripts %}
 <script>
   const STORAGE_KEY = "cafeteria_seen_order_ids";
-  const SOUND_ENABLED_KEY = "cafeteria_sound_enabled";
   let audioCtx = null;
   let soundEnabled = false;
 
@@ -78,46 +77,47 @@
     const button = document.getElementById("enable-sound-btn");
     if (!button) return;
 
+    button.textContent = "تفعيل الصوت";
+
     if (soundEnabled) {
-      button.textContent = "تفعيل الصوت";
       button.classList.remove("btn-outline-secondary");
       button.classList.add("btn-success");
     } else {
-      button.textContent = "تفعيل الصوت";
       button.classList.remove("btn-success");
       button.classList.add("btn-outline-secondary");
     }
   }
 
-  function markSoundEnabled() {
-    soundEnabled = true;
-    localStorage.setItem(SOUND_ENABLED_KEY, "1");
-    syncSoundButton();
-  }
-
-  function unlockSound() {
+  async function ensureAudioReady() {
     if (!audioCtx) {
       audioCtx = new (window.AudioContext || window.webkitAudioContext)();
     }
 
     if (audioCtx.state === "suspended") {
-      audioCtx.resume();
+      await audioCtx.resume();
     }
+  }
 
-    markSoundEnabled();
+  async function toggleSound() {
+    try {
+      if (!soundEnabled) {
+        await ensureAudioReady();
+        soundEnabled = true;
+      } else {
+        soundEnabled = false;
+      }
+      syncSoundButton();
+    } catch (error) {
+      console.error("Sound toggle failed:", error);
+    }
   }
 
   function playNotificationSound() {
     if (!soundEnabled) return;
 
     try {
-      if (!audioCtx) {
-        audioCtx = new (window.AudioContext || window.webkitAudioContext)();
-      }
-
-      if (audioCtx.state === "suspended") {
-        audioCtx.resume().catch(() => {});
-      }
+      if (!audioCtx) return;
+      if (audioCtx.state !== "running") return;
 
       const oscillator = audioCtx.createOscillator();
       const gainNode = audioCtx.createGain();
@@ -181,31 +181,12 @@
       saveSeenOrders(initialOrderIds);
     }
 
-    soundEnabled = localStorage.getItem(SOUND_ENABLED_KEY) === "1";
+    soundEnabled = false;
     syncSoundButton();
 
     const enableSoundButton = document.getElementById("enable-sound-btn");
     if (enableSoundButton) {
-      enableSoundButton.addEventListener("click", unlockSound);
-    }
-
-    if (soundEnabled) {
-      try {
-        audioCtx = new (window.AudioContext || window.webkitAudioContext)();
-        if (audioCtx.state === "suspended") {
-          const reviveSound = () => {
-            unlockSound();
-            window.removeEventListener("click", reviveSound);
-            window.removeEventListener("touchstart", reviveSound);
-            window.removeEventListener("keydown", reviveSound);
-          };
-          window.addEventListener("click", reviveSound, { once: true });
-          window.addEventListener("touchstart", reviveSound, { once: true });
-          window.addEventListener("keydown", reviveSound, { once: true });
-        }
-      } catch (error) {
-        console.error("Audio initialization failed:", error);
-      }
+      enableSoundButton.addEventListener("click", toggleSound);
     }
 
     setInterval(refreshOrders, 5000);
