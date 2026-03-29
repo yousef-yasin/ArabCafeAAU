@@ -27,7 +27,7 @@
 
   <div class="alert alert-warning d-flex flex-wrap align-items-center justify-content-between gap-2 mb-4" role="alert">
     <div>
-      <strong>تنبيه الطلبات:</strong> اضغط زر تفعيل الصوت مرة واحدة حتى يعمل صوت الإشعار عند وصول طلب جديد.
+      <strong>تنبيه الطلبات:</strong> اضغط زر <span id="enableSoundBtn">تفعيل الصوت</span> مرة واحدة حتى يعمل صوت الإشعار عند وصول طلب جديد.
     </div>
     <button type="button" class="btn btn-dark rounded-pill px-4" id="enable-sound-btn">تفعيل صوت الإشعارات</button>
   </div>
@@ -78,7 +78,7 @@
     const button = document.getElementById("enable-sound-btn");
     if (!button) return;
     if (soundEnabled) {
-      button.textContent = "تم تفعيل الصوت";
+      button.textContent = "تم <span id="enableSoundBtn">تفعيل الصوت</span>";
       button.classList.remove("btn-dark");
       button.classList.add("btn-success");
     } else {
