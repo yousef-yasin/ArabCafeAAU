@@ -492,9 +492,10 @@ def cancel_order(order_id):
 @app.route('/admin/orders/delete-all', methods=['POST'])
 @admin_required
 def delete_all_orders():
-    deleted = Order.query.delete()
+    deleted_items = OrderItem.query.delete()
+    deleted_orders = Order.query.delete()
     db.session.commit()
-    flash(f'تم حذف جميع الطلبات ({deleted}).', 'warning')
+    flash(f'تم حذف جميع الطلبات ({deleted_orders}) وكل العناصر التابعة إلها ({deleted_items}).', 'warning')
     return redirect(url_for('admin_dashboard'))
 
 
