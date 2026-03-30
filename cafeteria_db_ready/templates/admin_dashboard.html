@@ -50,6 +50,7 @@
   const DEFAULT_TITLE = document.title;
   let audioCtx = null;
   let alertsEnabled = false;
+  let lastShownCount = 0;
 
   function getOrderIdsFromHtml(html) {
     const temp = document.createElement("div");
@@ -93,24 +94,15 @@
     if (!audioCtx) {
       audioCtx = new (window.AudioContext || window.webkitAudioContext)();
     }
-
     if (audioCtx.state === "suspended") {
       await audioCtx.resume();
     }
   }
 
   async function requestBrowserNotifications() {
-    if (!("Notification" in window)) {
-      return false;
-    }
-
-    if (Notification.permission === "granted") {
-      return true;
-    }
-
-    if (Notification.permission === "denied") {
-      return false;
-    }
+    if (!("Notification" in window)) return false;
+    if (Notification.permission === "granted") return true;
+    if (Notification.permission === "denied") return false;
 
     const permission = await Notification.requestPermission();
     return permission === "granted";
@@ -120,12 +112,14 @@
     try {
       if (!alertsEnabled) {
         await ensureAudioReady();
-        await requestBrowserNotifications();
+        const notificationsOk = await requestBrowserNotifications();
         alertsEnabled = true;
+        if (!notificationsOk) {
+          console.warn("Browser notifications were not granted.");
+        }
       } else {
         alertsEnabled = false;
       }
-
       syncAlertButton();
     } catch (error) {
       console.error("Alert toggle failed:", error);
@@ -134,10 +128,8 @@
 
   function playNotificationSound() {
     if (!alertsEnabled) return;
-
     try {
-      if (!audioCtx) return;
-      if (audioCtx.state !== "running") return;
+      if (!audioCtx || audioCtx.state !== "running") return;
 
       const oscillator = audioCtx.createOscillator();
       const gainNode = audioCtx.createGain();
@@ -152,7 +144,6 @@
 
       oscillator.connect(gainNode);
       gainNode.connect(audioCtx.destination);
-
       oscillator.start(audioCtx.currentTime);
       oscillator.stop(audioCtx.currentTime + 0.45);
     } catch (error) {
@@ -165,25 +156,37 @@
     if (!("Notification" in window)) return;
     if (Notification.permission !== "granted") return;
 
-    const notification = new Notification("طلبات جديدة في الكافتيريا", {
-      body: `وصل ${newCount} طلب جديد.`,
-      icon: "/media/logo",
-      badge: "/media/logo",
+    const bodyText = newCount === 1
+      ? "وصل طلب جديد."
+      : `وصل ${newCount} طلبات جديدة.`;
+
+    const notification = new Notification("الكافتيريا", {
+      body: bodyText + " اضغط لفتح الصفحة.",
       tag: "cafeteria-new-orders",
-      renotify: true
+      renotify: true,
+      requireInteraction: true
     });
 
     notification.onclick = () => {
-      window.focus();
+      try {
+        window.focus();
+      } catch (e) {}
+      window.location.href = window.location.href;
       notification.close();
     };
+
+    setTimeout(() => {
+      try { notification.close(); } catch (e) {}
+    }, 15000);
   }
 
   function updatePageTitle(newCount) {
-    if (newCount > 0) {
+    if (newCount > 0 && document.hidden) {
       document.title = `(${newCount}) ${DEFAULT_TITLE}`;
-    } else {
+      lastShownCount = newCount;
+    } else if (!document.hidden) {
       document.title = DEFAULT_TITLE;
+      lastShownCount = 0;
     }
   }
 
@@ -193,9 +196,7 @@
       const status = params.get("status") || "all";
 
       const response = await fetch(`/admin/orders_partial?status=${encodeURIComponent(status)}`, {
-        headers: {
-          "X-Requested-With": "XMLHttpRequest"
-        }
+        headers: { "X-Requested-With": "XMLHttpRequest" }
       });
 
       if (!response.ok) return;
@@ -211,13 +212,13 @@
         container.innerHTML = html;
       }
 
-      saveSeenOrders(newOrderIds);
-      updatePageTitle(newCount);
-
       if (newCount > 0) {
         playNotificationSound();
         showBrowserNotification(newCount);
       }
+
+      updatePageTitle(newCount);
+      saveSeenOrders(newOrderIds);
     } catch (error) {
       console.error("Auto refresh failed:", error);
     }
@@ -226,11 +227,13 @@
   document.addEventListener("visibilitychange", () => {
     if (!document.hidden) {
       document.title = DEFAULT_TITLE;
+      lastShownCount = 0;
     }
   });
 
   window.addEventListener("focus", () => {
     document.title = DEFAULT_TITLE;
+    lastShownCount = 0;
   });
 
   document.addEventListener("DOMContentLoaded", () => {
