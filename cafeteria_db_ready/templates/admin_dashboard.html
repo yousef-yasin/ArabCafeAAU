@@ -27,9 +27,9 @@
 
   <div class="alert alert-warning d-flex flex-wrap align-items-center justify-content-between gap-2 mb-4" role="alert">
     <div>
-      <strong>تنبيه الطلبات:</strong> اضغط زر تفعيل الصوت مرة واحدة حتى يعمل صوت الإشعار عند وصول طلب جديد.
+      <strong>تنبيه الطلبات:</strong> اضغط الزر مرة واحدة لتفعيل الصوت وإشعارات المتصفح عند وصول طلبات جديدة.
     </div>
-    <button type="button" class="btn btn-outline-secondary rounded-pill px-4" id="enable-sound-btn">تفعيل الصوت</button>
+    <button type="button" class="btn btn-outline-secondary rounded-pill px-4" id="enable-sound-btn">تفعيل الصوت والإشعارات</button>
   </div>
 
  <div class="filter-bar mb-4">
@@ -47,8 +47,9 @@
 {% block scripts %}
 <script>
   const STORAGE_KEY = "cafeteria_seen_order_ids";
+  const DEFAULT_TITLE = document.title;
   let audioCtx = null;
-  let soundEnabled = false;
+  let alertsEnabled = false;
 
   function getOrderIdsFromHtml(html) {
     const temp = document.createElement("div");
@@ -73,13 +74,13 @@
     localStorage.setItem(STORAGE_KEY, JSON.stringify(orderIds));
   }
 
-  function syncSoundButton() {
+  function syncAlertButton() {
     const button = document.getElementById("enable-sound-btn");
     if (!button) return;
 
-    button.textContent = "تفعيل الصوت";
+    button.textContent = "تفعيل الصوت والإشعارات";
 
-    if (soundEnabled) {
+    if (alertsEnabled) {
       button.classList.remove("btn-outline-secondary");
       button.classList.add("btn-success");
     } else {
@@ -98,22 +99,41 @@
     }
   }
 
-  async function toggleSound() {
+  async function requestBrowserNotifications() {
+    if (!("Notification" in window)) {
+      return false;
+    }
+
+    if (Notification.permission === "granted") {
+      return true;
+    }
+
+    if (Notification.permission === "denied") {
+      return false;
+    }
+
+    const permission = await Notification.requestPermission();
+    return permission === "granted";
+  }
+
+  async function toggleAlerts() {
     try {
-      if (!soundEnabled) {
+      if (!alertsEnabled) {
         await ensureAudioReady();
-        soundEnabled = true;
+        await requestBrowserNotifications();
+        alertsEnabled = true;
       } else {
-        soundEnabled = false;
+        alertsEnabled = false;
       }
-      syncSoundButton();
+
+      syncAlertButton();
     } catch (error) {
-      console.error("Sound toggle failed:", error);
+      console.error("Alert toggle failed:", error);
     }
   }
 
   function playNotificationSound() {
-    if (!soundEnabled) return;
+    if (!alertsEnabled) return;
 
     try {
       if (!audioCtx) return;
@@ -140,6 +160,33 @@
     }
   }
 
+  function showBrowserNotification(newCount) {
+    if (!alertsEnabled) return;
+    if (!("Notification" in window)) return;
+    if (Notification.permission !== "granted") return;
+
+    const notification = new Notification("طلبات جديدة في الكافتيريا", {
+      body: `وصل ${newCount} طلب جديد.`,
+      icon: "/media/logo",
+      badge: "/media/logo",
+      tag: "cafeteria-new-orders",
+      renotify: true
+    });
+
+    notification.onclick = () => {
+      window.focus();
+      notification.close();
+    };
+  }
+
+  function updatePageTitle(newCount) {
+    if (newCount > 0) {
+      document.title = `(${newCount}) ${DEFAULT_TITLE}`;
+    } else {
+      document.title = DEFAULT_TITLE;
+    }
+  }
+
   async function refreshOrders() {
     try {
       const params = new URLSearchParams(window.location.search);
@@ -157,21 +204,34 @@
       const container = document.getElementById("orders-container");
       const newOrderIds = getOrderIdsFromHtml(html);
       const seenOrderIds = loadSeenOrders();
-      const hasNewOrder = seenOrderIds.length > 0 && newOrderIds.some((id) => !seenOrderIds.includes(id));
+      const unseenOrderIds = newOrderIds.filter((id) => !seenOrderIds.includes(id));
+      const newCount = unseenOrderIds.length;
 
       if (container) {
         container.innerHTML = html;
       }
 
       saveSeenOrders(newOrderIds);
+      updatePageTitle(newCount);
 
-      if (hasNewOrder) {
+      if (newCount > 0) {
         playNotificationSound();
+        showBrowserNotification(newCount);
       }
     } catch (error) {
       console.error("Auto refresh failed:", error);
     }
   }
+
+  document.addEventListener("visibilitychange", () => {
+    if (!document.hidden) {
+      document.title = DEFAULT_TITLE;
+    }
+  });
+
+  window.addEventListener("focus", () => {
+    document.title = DEFAULT_TITLE;
+  });
 
   document.addEventListener("DOMContentLoaded", () => {
     const container = document.getElementById("orders-container");
@@ -181,12 +241,12 @@
       saveSeenOrders(initialOrderIds);
     }
 
-    soundEnabled = false;
-    syncSoundButton();
+    alertsEnabled = false;
+    syncAlertButton();
 
     const enableSoundButton = document.getElementById("enable-sound-btn");
     if (enableSoundButton) {
-      enableSoundButton.addEventListener("click", toggleSound);
+      enableSoundButton.addEventListener("click", toggleAlerts);
     }
 
     setInterval(refreshOrders, 5000);
