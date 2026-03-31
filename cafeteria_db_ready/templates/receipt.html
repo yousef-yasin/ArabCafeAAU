@@ -20,7 +20,7 @@
     <img class="logo" src="{{ url_for('media_logo', _external=True) }}" alt="logo">
     <h2 style="margin:0">ARAB CAFE</h2>
     <div class="muted">فاتورة الطلب #{{ order.id }}</div>
-    <div class="muted">{{ order.created_at.strftime('%Y-%m-%d %H:%M') }}</div>
+    <div class="muted">{{ (order.created_at + timedelta(hours=3)).strftime('%Y-%m-%d %H:%M') }}</div>
   </div>
   <div class="line"></div>
   <p><strong>الطالب:</strong> {{ order.student_name }}</p>
