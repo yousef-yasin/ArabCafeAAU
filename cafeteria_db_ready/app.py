@@ -321,6 +321,7 @@ def inject_globals():
         'student_order_url': url_for('index'),
         'jordan_now_value': jordan_now(),
         'jordan_timezone_label': 'Asia/Amman',
+        'timedelta': timedelta,
     }
 
 
