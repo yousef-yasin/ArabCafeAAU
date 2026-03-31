@@ -25,6 +25,7 @@
   <div class="line"></div>
   <p><strong>الطالب:</strong> {{ order.student_name }}</p>
   <p><strong>التلفون:</strong> {{ order.phone }}</p>
+  <p><strong>المبنى:</strong> {{ order.building }}</p>
   {% if order.notes %}<p><strong>ملاحظات:</strong> {{ order.notes }}</p>{% endif %}
   <div class="line"></div>
   {% for item in order.items %}

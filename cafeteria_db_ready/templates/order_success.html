@@ -8,7 +8,7 @@
     <p>أول ما الكافتيريا تأكد الطلب، بصير يتجهز مباشرة.</p>
     <div class="success-summary">
       <div><span>الاسم</span><strong>{{ order.student_name }}</strong></div>
-      <div><span>التلفون</span><strong>{{ order.phone }}</strong></div>
+      <div><span>التلفون</span><strong>{{ order.phone }}<br>المبنى: {{ order.building }}</strong></div>
       <div><span>المجموع</span><strong>{{ '%.2f'|format(order.total) }} د.أ</strong></div>
     </div>
     <a href="{{ url_for('index') }}" class="btn btn-dark rounded-pill px-4">اعمل طلب جديد</a>

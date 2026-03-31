@@ -66,6 +66,7 @@ class Order(db.Model):
     id = db.Column(db.Integer, primary_key=True)
     student_name = db.Column(db.String(120), nullable=False)
     phone = db.Column(db.String(30), nullable=False)
+    building = db.Column(db.String(10), nullable=False, default='I')
     notes = db.Column(db.String(255), nullable=True)
     status = db.Column(db.String(30), default='pending')
     total = db.Column(db.Float, nullable=False)
@@ -198,7 +199,12 @@ def apply_schema_fixes():
         alter_statements.append('ALTER TABLE menu_item ADD COLUMN image_filename VARCHAR(255)')
     for stmt in alter_statements:
         db.session.execute(text(stmt))
-    if alter_statements:
+
+    order_cols = {c['name'] for c in inspector.get_columns('order')}
+    if 'building' not in order_cols:
+        db.session.execute(text("ALTER TABLE 'order' ADD COLUMN building VARCHAR(10) DEFAULT 'I' NOT NULL"))
+
+    if alter_statements or 'building' not in order_cols:
         db.session.commit()
 
 
@@ -342,11 +348,12 @@ def index():
 def place_order():
     student_name = request.form.get('student_name', '').strip()
     phone = request.form.get('phone', '').strip()
+    building = request.form.get('building', '').strip().upper()
     notes = request.form.get('notes', '').strip()
     raw_items = request.form.get('cart_payload', '').strip()
 
-    if not student_name or not phone or not raw_items:
-        flash('لازم تدخل الاسم ورقم التلفون وتختار طلب واحد على الأقل.', 'danger')
+    if not student_name or not phone or not raw_items or building not in {'I', 'B'}:
+        flash('لازم تدخل الاسم ورقم التلفون وتختار المبنى وتختار طلب واحد على الأقل.', 'danger')
         return redirect(url_for('index'))
 
     try:
@@ -379,7 +386,7 @@ def place_order():
         flash('المنتجات المختارة غير صالحة أو غير متاحة حالياً.', 'danger')
         return redirect(url_for('index'))
 
-    order = Order(student_name=student_name, phone=phone, notes=notes, total=round(total, 2))
+    order = Order(student_name=student_name, phone=phone, building=building, notes=notes, total=round(total, 2))
     db.session.add(order)
     db.session.flush()
 
