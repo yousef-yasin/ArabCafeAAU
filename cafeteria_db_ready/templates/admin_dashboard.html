@@ -27,7 +27,7 @@
 
   <div class="alert alert-warning d-flex flex-wrap align-items-center justify-content-between gap-2 mb-4" role="alert">
     <div>
-      <strong>تنبيه الطلبات:</strong> اضغط الزر مرة واحدة لتفعيل الصوت وإشعارات المتصفح عند وصول طلبات جديدة.
+      <strong>تنبيه الطلبات:</strong> اضغط الزر مرة واحدة لتفعيل الصوت وإشعارات المتصفح عند وصول طلبات جديدة. ويتم تحديث الصفحة تلقائياً يومياً الساعة 7:00 مساءً بتوقيت الأردن.
     </div>
     <button type="button" class="btn btn-outline-secondary rounded-pill px-4" id="enable-sound-btn">تفعيل الصوت والإشعارات</button>
   </div>
@@ -236,7 +236,110 @@
     lastShownCount = 0;
   });
 
-  document.addEventListener("DOMContentLoaded", () => {
+  
+  function getJordanNowParts() {
+    const formatter = new Intl.DateTimeFormat('en-CA', {
+      timeZone: 'Asia/Amman',
+      year: 'numeric',
+      month: '2-digit',
+      day: '2-digit',
+      hour: '2-digit',
+      minute: '2-digit',
+      second: '2-digit',
+      hour12: false
+    });
+
+    const parts = formatter.formatToParts(new Date());
+    const data = {};
+    parts.forEach((part) => {
+      if (part.type !== 'literal') {
+        data[part.type] = part.value;
+      }
+    });
+
+    return {
+      year: Number(data.year),
+      month: Number(data.month),
+      day: Number(data.day),
+      hour: Number(data.hour),
+      minute: Number(data.minute),
+      second: Number(data.second)
+    };
+  }
+
+  function jordanDateToUtcDate(year, month, day, hour, minute, second) {
+    const approxUtc = new Date(Date.UTC(year, month - 1, day, hour, minute, second));
+    const tzFormatter = new Intl.DateTimeFormat('en-US', {
+      timeZone: 'Asia/Amman',
+      year: 'numeric',
+      month: '2-digit',
+      day: '2-digit',
+      hour: '2-digit',
+      minute: '2-digit',
+      second: '2-digit',
+      hour12: false
+    });
+
+    const tzParts = {};
+    tzFormatter.formatToParts(approxUtc).forEach((part) => {
+      if (part.type !== 'literal') {
+        tzParts[part.type] = part.value;
+      }
+    });
+
+    const asIfUtc = Date.UTC(
+      Number(tzParts.year),
+      Number(tzParts.month) - 1,
+      Number(tzParts.day),
+      Number(tzParts.hour),
+      Number(tzParts.minute),
+      Number(tzParts.second)
+    );
+
+    const diffMs = asIfUtc - approxUtc.getTime();
+    return new Date(approxUtc.getTime() - diffMs);
+  }
+
+  function scheduleJordan7pmReload() {
+    const nowJordan = getJordanNowParts();
+    let targetYear = nowJordan.year;
+    let targetMonth = nowJordan.month;
+    let targetDay = nowJordan.day;
+
+    const pastSevenPm = nowJordan.hour > 19 || (nowJordan.hour === 19 && (nowJordan.minute > 0 || nowJordan.second > 0));
+    if (pastSevenPm) {
+      const tomorrowUtc = jordanDateToUtcDate(targetYear, targetMonth, targetDay, 12, 0, 0);
+      tomorrowUtc.setUTCDate(tomorrowUtc.getUTCDate() + 1);
+
+      const tomorrowJordanFormatter = new Intl.DateTimeFormat('en-CA', {
+        timeZone: 'Asia/Amman',
+        year: 'numeric',
+        month: '2-digit',
+        day: '2-digit'
+      });
+
+      const p = {};
+      tomorrowJordanFormatter.formatToParts(tomorrowUtc).forEach((part) => {
+        if (part.type !== 'literal') {
+          p[part.type] = part.value;
+        }
+      });
+
+      targetYear = Number(p.year);
+      targetMonth = Number(p.month);
+      targetDay = Number(p.day);
+    }
+
+    const targetDate = jordanDateToUtcDate(targetYear, targetMonth, targetDay, 19, 0, 0);
+    const delay = Math.max(targetDate.getTime() - Date.now(), 1000);
+
+    setTimeout(() => {
+      window.location.reload();
+    }, delay);
+  }
+
+
+document.addEventListener("DOMContentLoaded", () => {
     const container = document.getElementById("orders-container");
     const initialOrderIds = getOrderIdsFromHtml(container ? container.innerHTML : "");
 
@@ -246,6 +349,8 @@
 
     alertsEnabled = false;
     syncAlertButton();
+
+    scheduleJordan7pmReload();
 
     const enableSoundButton = document.getElementById("enable-sound-btn");
     if (enableSoundButton) {

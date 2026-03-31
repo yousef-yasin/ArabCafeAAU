@@ -1,4 +1,5 @@
 from datetime import datetime
+from zoneinfo import ZoneInfo
 from functools import wraps
 from collections import defaultdict
 from io import BytesIO
@@ -25,6 +26,14 @@ app.config['MAX_CONTENT_LENGTH'] = 8 * 1024 * 1024
 db = SQLAlchemy(app)
 
 
+JORDAN_TZ = ZoneInfo('Asia/Amman')
+
+
+def jordan_now():
+    return datetime.now(JORDAN_TZ).replace(tzinfo=None)
+
+
+
 class Admin(db.Model):
     id = db.Column(db.Integer, primary_key=True)
     username = db.Column(db.String(100), unique=True, nullable=False)
@@ -37,7 +46,7 @@ class SiteAsset(db.Model):
     filename = db.Column(db.String(255), nullable=True)
     mime_type = db.Column(db.String(100), nullable=True)
     data = db.Column(db.LargeBinary, nullable=True)
-    updated_at = db.Column(db.DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
+    updated_at = db.Column(db.DateTime, default=jordan_now, onupdate=jordan_now)
 
 
 class Category(db.Model):
@@ -70,7 +79,7 @@ class Order(db.Model):
     notes = db.Column(db.String(255), nullable=True)
     status = db.Column(db.String(30), default='pending')
     total = db.Column(db.Float, nullable=False)
-    created_at = db.Column(db.DateTime, default=datetime.utcnow)
+    created_at = db.Column(db.DateTime, default=jordan_now)
     confirmed_at = db.Column(db.DateTime, nullable=True)
     ready_at = db.Column(db.DateTime, nullable=True)
     items = db.relationship('OrderItem', backref='order', cascade='all, delete-orphan', lazy=True)
@@ -310,6 +319,8 @@ def inject_globals():
     return {
         'site_name': 'Arab Cafe',
         'student_order_url': url_for('index'),
+        'jordan_now_value': jordan_now(),
+        'jordan_timezone_label': 'Asia/Amman',
     }
 
 
@@ -435,7 +446,7 @@ def admin_dashboard():
         'total_orders': Order.query.count(),
         'sales_today': round(
             db.session.query(func.coalesce(func.sum(Order.total), 0.0))
-            .filter(func.date(Order.created_at) == datetime.utcnow().date().isoformat())
+            .filter(func.date(Order.created_at) == jordan_now().date().isoformat())
             .scalar() or 0.0, 2
         )
     }
@@ -470,7 +481,7 @@ def reports():
 def confirm_order(order_id):
     order = Order.query.get_or_404(order_id)
     order.status = 'confirmed'
-    order.confirmed_at = datetime.utcnow()
+    order.confirmed_at = jordan_now()
     db.session.commit()
     return redirect(url_for('print_receipt', order_id=order.id))
 
@@ -480,7 +491,7 @@ def confirm_order(order_id):
 def ready_order(order_id):
     order = Order.query.get_or_404(order_id)
     order.status = 'ready'
-    order.ready_at = datetime.utcnow()
+    order.ready_at = jordan_now()
     db.session.commit()
     flash(f'تم تجهيز الطلب رقم #{order.id}', 'success')
     return redirect(url_for('admin_dashboard'))
