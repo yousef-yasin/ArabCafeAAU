@@ -445,7 +445,7 @@ def admin_dashboard():
 @app.route('/admin/reports')
 @admin_required
 def reports():
-    daily_orders = Order.query.order_by(Order.created_at.desc()).all()
+    daily_orders = Order.query.filter(Order.status != 'cancelled').order_by(Order.created_at.desc()).all()
     grouped = defaultdict(list)
     for order in daily_orders:
         day = order.created_at.strftime('%Y-%m-%d')
