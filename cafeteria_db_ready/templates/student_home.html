@@ -9,6 +9,22 @@
     <div class="menu-header-badge">{{ categories|length }} أقسام</div>
   </div>
 
+
+  <div class="menu-search-wrap mb-4">
+    <div class="menu-search-box">
+      <span class="menu-search-icon">🔎</span>
+      <input
+        type="text"
+        id="menu-search-input"
+        class="menu-search-input"
+        placeholder="Search / ابحث عن أي صنف مثل لاتيه، برغر، بيتزا..."
+        autocomplete="off"
+      >
+      <button type="button" class="menu-search-clear" id="menu-search-clear" aria-label="مسح البحث">✕</button>
+    </div>
+    <div class="menu-search-meta mt-2" id="menu-search-meta">اكتب اسم المنتج حتى يظهر فوراً.</div>
+  </div>
+
   <div class="cart-floating-wrap">
     <button type="button" class="cart-floating-btn" id="cart-float-btn">
       <span class="cart-floating-icon">🛒</span>
@@ -41,8 +57,9 @@
 
   <div class="row g-4 align-items-start">
     <div class="col-12">
+      <div class="empty-box d-none" id="search-empty-state">ما لقينا نتائج. جرّب اسم ثاني أو جزء من الاسم.</div>
       {% for category in categories %}
-      <section class="menu-category-panel {% if loop.first %}active{% endif %}" id="category-{{ category.id }}">
+      <section class="menu-category-panel {% if loop.first %}active{% endif %}" id="category-{{ category.id }}" data-category-name="{{ category.name|lower }}">
         <div class="section-heading mb-3">
           <h2 class="section-title mb-1">{{ category.name }}</h2>
           <div class="text-muted small">{{ category.items|selectattr('available')|list|length }} صنف متاح</div>
@@ -50,7 +67,7 @@
 
         <div class="row g-3">
           {% for item in category.items if item.available %}
-          <div class="col-md-6 col-xl-4 col-12">
+          <div class="col-md-6 col-xl-4 col-12 searchable-item" data-search-text="{{ (item.name ~ ' ' ~ (item.description or '') ~ ' ' ~ category.name)|lower }}">
             <div class="item-card h-100 {% if not category.show_image %}no-image-card{% endif %}">
               {% if category.show_image and item.image_data %}
                 <img src="{{ url_for('menu_item_image', item_id=item.id) }}" alt="{{ item.name }}" class="item-image">
@@ -146,22 +163,135 @@
   document.addEventListener('DOMContentLoaded', function () {
     const tabButtons = document.querySelectorAll('.category-tab-btn');
     const panels = document.querySelectorAll('.menu-category-panel');
+    const searchInput = document.getElementById('menu-search-input');
+    const searchClear = document.getElementById('menu-search-clear');
+    const searchMeta = document.getElementById('menu-search-meta');
+    const emptyState = document.getElementById('search-empty-state');
+
+    function normalizeText(value) {
+      return (value || '')
+        .toString()
+        .toLowerCase()
+        .replace(/أ|إ|آ/g, 'ا')
+        .replace(/ة/g, 'ه')
+        .replace(/ى/g, 'ي')
+        .replace(/ؤ/g, 'و')
+        .replace(/ئ/g, 'ي')
+        .replace(/[^\u0600-\u06FFa-z0-9\s]/gi, ' ')
+        .replace(/\s+/g, ' ')
+        .trim();
+    }
+
+    function showPanel(targetId) {
+      tabButtons.forEach((btn) => btn.classList.remove('active'));
+      panels.forEach((panel) => panel.classList.remove('active'));
+
+      const clickedButton = Array.from(tabButtons).find((btn) => btn.getAttribute('data-target') === targetId);
+      if (clickedButton) {
+        clickedButton.classList.add('active');
+      }
+
+      const targetPanel = document.getElementById(targetId);
+      if (targetPanel) {
+        targetPanel.classList.add('active');
+      }
+    }
 
     tabButtons.forEach((button) => {
       button.addEventListener('click', function () {
         const targetId = this.getAttribute('data-target');
-        tabButtons.forEach((btn) => btn.classList.remove('active'));
-        panels.forEach((panel) => panel.classList.remove('active'));
-        this.classList.add('active');
+        if (searchInput && searchInput.value.trim()) {
+          searchInput.value = '';
+          runSearch('');
+        }
+        showPanel(targetId);
         const targetPanel = document.getElementById(targetId);
-        if (targetPanel) {
-          targetPanel.classList.add('active');
-          if (window.innerWidth < 992) {
-            window.scrollTo({ top: targetPanel.offsetTop - 120, behavior: 'smooth' });
-          }
+        if (targetPanel && window.innerWidth < 992) {
+          window.scrollTo({ top: targetPanel.offsetTop - 120, behavior: 'smooth' });
         }
       });
     });
+
+    function runSearch(rawValue) {
+      const query = normalizeText(rawValue);
+      let totalVisible = 0;
+
+      panels.forEach((panel, panelIndex) => {
+        const items = panel.querySelectorAll('.searchable-item');
+        let panelVisibleCount = 0;
+
+        items.forEach((item) => {
+          const haystack = normalizeText(item.dataset.searchText || item.textContent);
+          const matched = !query || haystack.includes(query);
+          item.style.display = matched ? '' : 'none';
+          if (matched) {
+            panelVisibleCount += 1;
+            totalVisible += 1;
+          }
+        });
+
+        if (!query) {
+          panel.style.display = '';
+          if (panelIndex === 0) {
+            panel.classList.add('active');
+          }
+          return;
+        }
+
+        panel.style.display = panelVisibleCount > 0 ? '' : 'none';
+        panel.classList.remove('active');
+
+        if (panelVisibleCount > 0 && !document.querySelector('.menu-category-panel.active')) {
+          panel.classList.add('active');
+        }
+      });
+
+      if (!query) {
+        if (emptyState) emptyState.classList.add('d-none');
+        if (searchMeta) searchMeta.textContent = 'اكتب اسم المنتج حتى يظهر فوراً.';
+        tabButtons.forEach((btn, idx) => {
+          btn.style.display = '';
+          btn.classList.toggle('active', idx === 0);
+        });
+        return;
+      }
+
+      tabButtons.forEach((btn) => {
+        const targetPanel = document.getElementById(btn.getAttribute('data-target'));
+        btn.style.display = targetPanel && targetPanel.style.display !== 'none' ? '' : 'none';
+        btn.classList.remove('active');
+      });
+
+      const firstVisibleButton = Array.from(tabButtons).find((btn) => btn.style.display !== 'none');
+      if (firstVisibleButton) {
+        firstVisibleButton.classList.add('active');
+      }
+
+      if (emptyState) {
+        emptyState.classList.toggle('d-none', totalVisible > 0);
+      }
+
+      if (searchMeta) {
+        searchMeta.textContent = totalVisible > 0
+          ? `ظهر ${totalVisible} نتيجة مطابقة.`
+          : 'ما في نتائج مطابقة حالياً.';
+      }
+    }
+
+    if (searchInput) {
+      searchInput.addEventListener('input', function () {
+        runSearch(this.value);
+      });
+    }
+
+    if (searchClear) {
+      searchClear.addEventListener('click', function () {
+        if (!searchInput) return;
+        searchInput.value = '';
+        runSearch('');
+        searchInput.focus();
+      });
+    }
   });
 </script>
 {% endblock %}
