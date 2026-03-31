@@ -5,6 +5,7 @@ from io import BytesIO
 import json
 import mimetypes
 import os
+import stripe
 
 from flask import Flask, render_template, render_template_string, request, redirect, url_for, flash, session, send_file, abort
 from flask_sqlalchemy import SQLAlchemy
@@ -21,6 +22,11 @@ app.config['SECRET_KEY'] = os.getenv('SECRET_KEY', 'dev-secret-change-me')
 app.config['SQLALCHEMY_DATABASE_URI'] = f'sqlite:///{DB_PATH}'
 app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
 app.config['MAX_CONTENT_LENGTH'] = 8 * 1024 * 1024
+app.config['STRIPE_SECRET_KEY'] = os.getenv('STRIPE_SECRET_KEY', '').strip()
+app.config['STRIPE_PUBLISHABLE_KEY'] = os.getenv('STRIPE_PUBLISHABLE_KEY', '').strip()
+app.config['BASE_URL'] = os.getenv('BASE_URL', '').strip()
+
+stripe.api_key = app.config['STRIPE_SECRET_KEY']
 
 db = SQLAlchemy(app)
 
@@ -69,9 +75,13 @@ class Order(db.Model):
     notes = db.Column(db.String(255), nullable=True)
     status = db.Column(db.String(30), default='pending')
     total = db.Column(db.Float, nullable=False)
+    payment_method = db.Column(db.String(30), nullable=False, default='cash')
+    payment_status = db.Column(db.String(30), nullable=False, default='pending')
+    payment_reference = db.Column(db.String(255), nullable=True)
     created_at = db.Column(db.DateTime, default=datetime.utcnow)
     confirmed_at = db.Column(db.DateTime, nullable=True)
     ready_at = db.Column(db.DateTime, nullable=True)
+    paid_at = db.Column(db.DateTime, nullable=True)
     items = db.relationship('OrderItem', backref='order', cascade='all, delete-orphan', lazy=True)
 
 
@@ -196,9 +206,19 @@ def apply_schema_fixes():
         alter_statements.append('ALTER TABLE menu_item ADD COLUMN image_mime_type VARCHAR(100)')
     if 'image_filename' not in menu_cols:
         alter_statements.append('ALTER TABLE menu_item ADD COLUMN image_filename VARCHAR(255)')
+    order_cols = {c['name'] for c in inspector.get_columns('order')}
+    if 'payment_method' not in order_cols:
+        db.session.execute(text("ALTER TABLE 'order' ADD COLUMN payment_method VARCHAR(30) DEFAULT 'cash'"))
+    if 'payment_status' not in order_cols:
+        db.session.execute(text("ALTER TABLE 'order' ADD COLUMN payment_status VARCHAR(30) DEFAULT 'pending'"))
+    if 'payment_reference' not in order_cols:
+        db.session.execute(text("ALTER TABLE 'order' ADD COLUMN payment_reference VARCHAR(255)"))
+    if 'paid_at' not in order_cols:
+        db.session.execute(text("ALTER TABLE 'order' ADD COLUMN paid_at DATETIME"))
+
     for stmt in alter_statements:
         db.session.execute(text(stmt))
-    if alter_statements:
+    if alter_statements or 'payment_method' not in order_cols or 'payment_status' not in order_cols or 'payment_reference' not in order_cols or 'paid_at' not in order_cols:
         db.session.commit()
 
 
@@ -338,34 +358,33 @@ def index():
     return render_template('student_home.html', categories=categories, featured_items=featured_items)
 
 
-@app.route('/place-order', methods=['POST'])
-def place_order():
-    student_name = request.form.get('student_name', '').strip()
-    phone = request.form.get('phone', '').strip()
-    notes = request.form.get('notes', '').strip()
-    raw_items = request.form.get('cart_payload', '').strip()
 
+
+def build_order_payload(student_name, phone, notes, raw_items):
     if not student_name or not phone or not raw_items:
-        flash('لازم تدخل الاسم ورقم التلفون وتختار طلب واحد على الأقل.', 'danger')
-        return redirect(url_for('index'))
+        raise ValueError('لازم تدخل الاسم ورقم التلفون وتختار طلب واحد على الأقل.')
 
     try:
         cart_items = json.loads(raw_items)
-    except Exception:
-        flash('صار خطأ ببيانات السلة.', 'danger')
-        return redirect(url_for('index'))
+    except Exception as exc:
+        raise ValueError('صار خطأ ببيانات السلة.') from exc
 
     if not cart_items:
-        flash('السلة فاضية.', 'danger')
-        return redirect(url_for('index'))
+        raise ValueError('السلة فاضية.')
 
     order_items = []
     total = 0
     for cart_item in cart_items:
-        menu_item = MenuItem.query.get(int(cart_item['id']))
-        qty = int(cart_item['qty'])
+        try:
+            menu_item_id = int(cart_item['id'])
+            qty = int(cart_item['qty'])
+        except Exception:
+            continue
+
+        menu_item = MenuItem.query.get(menu_item_id)
         if not menu_item or qty < 1 or not menu_item.available:
             continue
+
         subtotal = menu_item.price * qty
         total += subtotal
         order_items.append({
@@ -376,18 +395,143 @@ def place_order():
         })
 
     if not order_items:
-        flash('المنتجات المختارة غير صالحة أو غير متاحة حالياً.', 'danger')
-        return redirect(url_for('index'))
+        raise ValueError('المنتجات المختارة غير صالحة أو غير متاحة حالياً.')
 
-    order = Order(student_name=student_name, phone=phone, notes=notes, total=round(total, 2))
+    return {
+        'student_name': student_name,
+        'phone': phone,
+        'notes': notes,
+        'order_items': order_items,
+        'total': round(total, 2),
+    }
+
+
+def create_order_from_payload(payload, payment_method='cash', payment_status='pending', payment_reference=None, paid_at=None):
+    order = Order(
+        student_name=payload['student_name'],
+        phone=payload['phone'],
+        notes=payload.get('notes'),
+        total=payload['total'],
+        payment_method=payment_method,
+        payment_status=payment_status,
+        payment_reference=payment_reference,
+        paid_at=paid_at,
+    )
     db.session.add(order)
     db.session.flush()
 
-    for item in order_items:
+    for item in payload['order_items']:
         db.session.add(OrderItem(order_id=order.id, **item))
 
     db.session.commit()
+    return order
+
+
+def get_base_url():
+    configured_base = app.config.get('BASE_URL')
+    if configured_base:
+        return configured_base.rstrip('/')
+    return request.host_url.rstrip('/')
+
+
+@app.route('/place-order', methods=['POST'])
+def place_order():
+    student_name = request.form.get('student_name', '').strip()
+    phone = request.form.get('phone', '').strip()
+    notes = request.form.get('notes', '').strip()
+    raw_items = request.form.get('cart_payload', '').strip()
+    payment_method = request.form.get('payment_method', 'cash').strip().lower()
+
+    try:
+        payload = build_order_payload(student_name, phone, notes, raw_items)
+    except ValueError as exc:
+        flash(str(exc), 'danger')
+        return redirect(url_for('index'))
+
+    if payment_method == 'visa':
+        if not app.config['STRIPE_SECRET_KEY']:
+            flash('الدفع بالفيزا غير مفعل بعد. أضف STRIPE_SECRET_KEY و STRIPE_PUBLISHABLE_KEY في ملف البيئة أولاً.', 'warning')
+            return redirect(url_for('index'))
+
+        session['pending_online_order'] = {
+            'student_name': payload['student_name'],
+            'phone': payload['phone'],
+            'notes': payload['notes'],
+            'order_items': payload['order_items'],
+            'total': payload['total'],
+        }
+
+        try:
+            checkout_session = stripe.checkout.Session.create(
+                mode='payment',
+                payment_method_types=['card'],
+                line_items=[
+                    {
+                        'price_data': {
+                            'currency': 'jod',
+                            'product_data': {'name': item['item_name']},
+                            'unit_amount': int(round(item['unit_price'] * 100)),
+                        },
+                        'quantity': item['quantity'],
+                    }
+                    for item in payload['order_items']
+                ],
+                metadata={
+                    'student_name': payload['student_name'],
+                    'phone': payload['phone'],
+                },
+                success_url=f"{get_base_url()}{url_for('stripe_success')}?session_id={{CHECKOUT_SESSION_ID}}",
+                cancel_url=f"{get_base_url()}{url_for('stripe_cancel')}",
+            )
+        except Exception:
+            flash('صار خطأ أثناء تجهيز الدفع الإلكتروني.', 'danger')
+            return redirect(url_for('index'))
+
+        return redirect(checkout_session.url, code=303)
+
+    order = create_order_from_payload(payload, payment_method='cash', payment_status='unpaid')
     return render_template('order_success.html', order=order)
+
+
+@app.route('/payment/stripe/success')
+def stripe_success():
+    session_id = request.args.get('session_id', '').strip()
+    pending_order = session.get('pending_online_order')
+
+    if not session_id or not pending_order:
+        flash('بيانات الدفع غير مكتملة.', 'warning')
+        return redirect(url_for('index'))
+
+    try:
+        checkout_session = stripe.checkout.Session.retrieve(session_id)
+    except Exception:
+        flash('تعذر التحقق من عملية الدفع.', 'danger')
+        return redirect(url_for('index'))
+
+    if checkout_session.payment_status != 'paid':
+        flash('الدفع لم يكتمل بعد.', 'warning')
+        return redirect(url_for('index'))
+
+    existing_order = Order.query.filter_by(payment_reference=session_id).first()
+    if existing_order:
+        session.pop('pending_online_order', None)
+        return render_template('order_success.html', order=existing_order)
+
+    order = create_order_from_payload(
+        pending_order,
+        payment_method='visa',
+        payment_status='paid',
+        payment_reference=session_id,
+        paid_at=datetime.utcnow(),
+    )
+    session.pop('pending_online_order', None)
+    return render_template('order_success.html', order=order)
+
+
+@app.route('/payment/stripe/cancel')
+def stripe_cancel():
+    flash('تم إلغاء الدفع بالفيزا ولم يتم تسجيل الطلب.', 'info')
+    return redirect(url_for('index'))
 
 
 @app.route('/admin/loginarabcafeaau', methods=['GET', 'POST'])

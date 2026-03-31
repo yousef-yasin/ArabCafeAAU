@@ -5,34 +5,204 @@
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>فاتورة الطلب #{{ order.id }}</title>
   <style>
-    body{font-family:Arial,sans-serif;padding:16px;max-width:320px;margin:auto;color:#111}
-    .header{text-align:center}.logo{width:72px;height:72px;object-fit:cover;border-radius:50%;margin:0 auto 8px;display:block}
-    .line{border-top:1px dashed #333;margin:12px 0}.item{display:flex;justify-content:space-between;font-size:14px;margin-bottom:6px;gap:8px}.muted{color:#666;font-size:13px}
-    @media print {.no-print{display:none} body{padding:0}}
+    :root {
+      --paper-width: 72mm;
+    }
+
+    * {
+      box-sizing: border-box;
+    }
+
+    html, body {
+      margin: 0;
+      padding: 0;
+      background: #fff;
+      color: #111;
+      font-family: Arial, sans-serif;
+      width: var(--paper-width);
+      min-width: var(--paper-width);
+      max-width: var(--paper-width);
+      height: auto;
+      min-height: 0;
+      overflow: hidden;
+    }
+
+    body {
+      direction: rtl;
+      display: inline-block;
+    }
+
+    .receipt {
+      width: 100%;
+      display: inline-block;
+      padding: 3mm;
+    }
+
+    .header {
+      text-align: center;
+    }
+
+    .logo {
+      width: 16mm;
+      height: 16mm;
+      object-fit: cover;
+      border-radius: 50%;
+      margin: 0 auto 2mm;
+      display: block;
+    }
+
+    h2 {
+      margin: 0 0 1.5mm 0;
+      font-size: 18px;
+    }
+
+    .line {
+      border-top: 1px dashed #333;
+      margin: 2.5mm 0;
+    }
+
+    .item {
+      display: flex;
+      justify-content: space-between;
+      align-items: flex-start;
+      gap: 8px;
+      font-size: 13px;
+      margin-bottom: 2mm;
+    }
+
+    .item span:first-child {
+      flex: 1;
+      word-break: break-word;
+    }
+
+    .muted {
+      color: #666;
+      font-size: 12px;
+      margin: 0 0 1mm 0;
+    }
+
+    .meta {
+      font-size: 13px;
+      margin: 0 0 1.5mm 0;
+      word-break: break-word;
+    }
+
+    .total {
+      font-weight: bold;
+      font-size: 14px;
+    }
+
+    .thanks {
+      text-align: center;
+      margin: 0;
+      font-size: 13px;
+    }
+
+    .no-print {
+      margin: 12px auto;
+      text-align: center;
+      width: var(--paper-width);
+    }
+
+    .no-print button,
+    .no-print a {
+      display: inline-block;
+      padding: 10px 16px;
+      border-radius: 10px;
+      border: none;
+      text-decoration: none;
+      cursor: pointer;
+      background: #111;
+      color: #fff;
+      margin: 0 4px;
+      font-size: 14px;
+    }
+
+    @page {
+      size: 72mm auto;
+      margin: 0;
+    }
+
+    @media print {
+      html, body {
+        width: var(--paper-width) !important;
+        min-width: var(--paper-width) !important;
+        max-width: var(--paper-width) !important;
+        height: auto !important;
+        min-height: 0 !important;
+        margin: 0 !important;
+        padding: 0 !important;
+        overflow: hidden !important;
+      }
+
+      body {
+        display: inline-block !important;
+      }
+
+      .receipt {
+        width: 100% !important;
+        display: inline-block !important;
+        padding: 2.5mm !important;
+        page-break-after: avoid !important;
+        page-break-before: avoid !important;
+        break-after: avoid !important;
+        break-before: avoid !important;
+      }
+
+      .no-print {
+        display: none !important;
+      }
+    }
   </style>
 </head>
-<body onload="window.print()">
-  <div class="no-print" style="margin-bottom:16px;text-align:center">
+<body onafterprint="window.close()">
+  <div class="no-print">
     <button onclick="window.print()">طباعة</button>
     <a href="{{ url_for('admin_dashboard') }}">رجوع</a>
   </div>
-  <div class="header">
-    <img class="logo" src="{{ url_for('media_logo', _external=True) }}" alt="logo">
-    <h2 style="margin:0">ARAB CAFE</h2>
-    <div class="muted">فاتورة الطلب #{{ order.id }}</div>
-    <div class="muted">{{ order.created_at.strftime('%Y-%m-%d %H:%M') }}</div>
+
+  <div class="receipt">
+    <div class="header">
+      <img class="logo" src="{{ url_for('media_logo', _external=True) }}" alt="logo">
+      <h2>ARAB CAFE</h2>
+      <div class="muted">فاتورة الطلب #{{ order.id }}</div>
+      <div class="muted">{{ order.created_at.strftime('%Y-%m-%d %H:%M') }}</div>
+    </div>
+
+    <div class="line"></div>
+
+    <p class="meta"><strong>الطالب:</strong> {{ order.student_name }}</p>
+    <p class="meta"><strong>التلفون:</strong> {{ order.phone }}</p>
+    {% if order.notes %}
+    <p class="meta"><strong>ملاحظات:</strong> {{ order.notes }}</p>
+    {% endif %}
+
+    <div class="line"></div>
+
+    {% for item in order.items %}
+    <div class="item">
+      <span>{{ item.quantity }} × {{ item.item_name }}</span>
+      <span>{{ '%.2f'|format(item.unit_price * item.quantity) }} د.أ</span>
+    </div>
+    {% endfor %}
+
+    <div class="line"></div>
+
+    <div class="item total">
+      <span>المجموع</span>
+      <span>{{ '%.2f'|format(order.total) }} د.أ</span>
+    </div>
+
+    <div class="line"></div>
+    <p class="thanks">شكراً وبالهناء والشفاء</p>
   </div>
-  <div class="line"></div>
-  <p><strong>الطالب:</strong> {{ order.student_name }}</p>
-  <p><strong>التلفون:</strong> {{ order.phone }}</p>
-  {% if order.notes %}<p><strong>ملاحظات:</strong> {{ order.notes }}</p>{% endif %}
-  <div class="line"></div>
-  {% for item in order.items %}
-  <div class="item"><span>{{ item.quantity }} × {{ item.item_name }}</span><span>{{ '%.2f'|format(item.unit_price * item.quantity) }} د.أ</span></div>
-  {% endfor %}
-  <div class="line"></div>
-  <div class="item" style="font-weight:bold"><span>المجموع</span><span>{{ '%.2f'|format(order.total) }} د.أ</span></div>
-  <div class="line"></div>
-  <p style="text-align:center">شكراً وبالهناء والشفاء</p>
+
+  <script>
+    window.addEventListener("load", function () {
+      setTimeout(function () {
+        window.print();
+      }, 250);
+    });
+  </script>
 </body>
 </html>

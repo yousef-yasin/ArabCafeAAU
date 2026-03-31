@@ -41,3 +41,15 @@ python app.py
 - الصور تُخزن داخل الجداول كـ BLOB
 - تم وضع ملفات seed داخل مجلد `seed` فقط من أجل تعبئة قاعدة البيانات أول تشغيل
 - بعد أول تشغيل، عرض الصور في الموقع يكون من قاعدة البيانات عبر routes مثل `/media/item/...`
+
+
+## تفعيل الدفع بالفيزا (Stripe)
+أضف القيم التالية إلى ملف البيئة `.env` أو إعدادات الاستضافة:
+- `STRIPE_SECRET_KEY=sk_test_...`
+- `STRIPE_PUBLISHABLE_KEY=pk_test_...`
+- `BASE_URL=https://your-domain.example`
+
+بعدها شغّل:
+- `pip install -r requirements.txt`
+
+زر **ادفع فيزا** يستخدم Stripe Checkout للدفع بالبطاقات مثل Visa ثم يعيد الطالب إلى الموقع بعد نجاح العملية.
