@@ -10,8 +10,6 @@
       <div><span>الاسم</span><strong>{{ order.student_name }}</strong></div>
       <div><span>التلفون</span><strong>{{ order.phone }}</strong></div>
       <div><span>المجموع</span><strong>{{ '%.2f'|format(order.total) }} د.أ</strong></div>
-      <div><span>طريقة الدفع</span><strong>{% if order.payment_method == 'visa' %}Visa{% else %}كاش{% endif %}</strong></div>
-      <div><span>حالة الدفع</span><strong>{% if order.payment_status == 'paid' %}مدفوع{% elif order.payment_method == 'visa' %}بانتظار الدفع{% else %}غير مدفوع{% endif %}</strong></div>
     </div>
     <a href="{{ url_for('index') }}" class="btn btn-dark rounded-pill px-4">اعمل طلب جديد</a>
   </div>
